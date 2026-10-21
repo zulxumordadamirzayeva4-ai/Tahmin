@@ -1,0 +1,47 @@
+{% extends "games/base.html" %}
+
+{% block title %}Ro'yxatdan o'tish - Sonni Top O'yini{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div style="width:48px; height:48px; border-radius:14px; background:linear-gradient(135deg, var(--accent), var(--primary)); display:flex; align-items:center; justify-content:center; margin:0 auto 1.25rem; font-size:1.5rem; box-shadow:0 8px 16px -4px var(--accent-glow);">
+    ✨
+  </div>
+  <h2>Ro'yxatdan o'tish</h2>
+  <p class="subtitle">Yangi hisob oching va o'yinni boshlang</p>
+
+  {% if form.errors %}
+    <ul class="error-list">
+      {% for field in form %}
+        {% for error in field.errors %}
+          <li>{{ error }}</li>
+        {% endfor %}
+      {% endfor %}
+      {% for error in form.non_field_errors %}
+        <li>{{ error }}</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  <form method="post" action="{% url 'register' %}">
+    {% csrf_token %}
+    <div class="form-group">
+      <label for="id_username">Foydalanuvchi nomi</label>
+      <input type="text" name="username" id="id_username" required autofocus placeholder="Foydalanuvchi nomini tanlang" value="{{ form.username.value|default_if_none:'' }}">
+    </div>
+    <div class="form-group">
+      <label for="id_password">Parol</label>
+      <input type="password" name="password" id="id_password" required placeholder="Parol tanlang">
+    </div>
+    <div class="form-group">
+      <label for="id_password_confirm">Parolni tasdiqlash</label>
+      <input type="password" name="password_confirm" id="id_password_confirm" required placeholder="Parolni qayta kiriting">
+    </div>
+    <button type="submit">Ro'yxatdan o'tish</button>
+  </form>
+
+  <div class="footer-links">
+    Hisobingiz bormi? <a href="{% url 'login' %}">Kirish</a>
+  </div>
+</div>
+{% endblock %}

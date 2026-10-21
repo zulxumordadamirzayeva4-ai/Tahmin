@@ -1,0 +1,43 @@
+{% extends "games/base.html" %}
+
+{% block title %}Kirish - Sonni Top O'yini{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div style="width:48px; height:48px; border-radius:14px; background:linear-gradient(135deg, var(--primary), var(--accent)); display:flex; align-items:center; justify-content:center; margin:0 auto 1.25rem; font-size:1.5rem; box-shadow:0 8px 16px -4px var(--primary-glow);">
+    🎲
+  </div>
+  <h2>Xush kelibsiz</h2>
+  <p class="subtitle">O'yinni boshlash uchun hisobingizga kiring</p>
+
+  {% if form.errors %}
+    <ul class="error-list">
+      {% for field in form %}
+        {% for error in field.errors %}
+          <li>{{ error }}</li>
+        {% endfor %}
+      {% endfor %}
+      {% for error in form.non_field_errors %}
+        <li>{{ error }}</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  <form method="post" action="{% url 'login' %}">
+    {% csrf_token %}
+    <div class="form-group">
+      <label for="id_username">Foydalanuvchi nomi</label>
+      <input type="text" name="username" id="id_username" required autofocus placeholder="Foydalanuvchi nomini kiriting">
+    </div>
+    <div class="form-group">
+      <label for="id_password">Parol</label>
+      <input type="password" name="password" id="id_password" required placeholder="Parolni kiriting">
+    </div>
+    <button type="submit">Kirish</button>
+  </form>
+
+  <div class="footer-links">
+    Hisobingiz yo'qmi? <a href="{% url 'register' %}">Ro'yxatdan o'tish</a>
+  </div>
+</div>
+{% endblock %}

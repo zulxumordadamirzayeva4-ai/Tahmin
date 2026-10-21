@@ -1,0 +1,858 @@
+{% extends "games/base.html" %}
+
+{% block title %}Sonni Top - Zamonaviy O'yin{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+<style>
+  .app-layout {
+    display: flex;
+    gap: 1.5rem;
+    width: 100%;
+    max-width: 980px;
+    align-items: stretch;
+  }
+  .game-card {
+    flex: 1.25;
+    min-width: 0;
+    max-width: none;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .log-sidebar {
+    flex: 0.75;
+    background: var(--card-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--card-border);
+    border-radius: 20px;
+    padding: 1.75rem;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05);
+    min-width: 320px;
+  }
+  .header-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--card-border);
+  }
+  .user-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+  }
+  .user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #fff;
+  }
+  
+  /* LOBBY / PRE-GAME HERO STATE */
+  .lobby-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 1.5rem 0.5rem;
+    margin: auto 0;
+  }
+  .lobby-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 24px;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(6, 182, 212, 0.2));
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.75rem;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 16px 32px -8px var(--primary-glow);
+    animation: float 4s ease-in-out infinite;
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+  .diff-selector-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.75rem;
+  }
+  .diff-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+    width: 100%;
+    margin-bottom: 1.75rem;
+  }
+  .diff-card {
+    background: var(--surface);
+    border: 1px solid var(--card-border);
+    border-radius: 14px;
+    padding: 1rem 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    text-align: center;
+  }
+  .diff-card:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+  }
+  .diff-card.active {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(6, 182, 212, 0.1));
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px var(--primary-glow);
+  }
+  .diff-name {
+    font-weight: 700;
+    font-size: 0.95rem;
+    margin-bottom: 0.25rem;
+  }
+  .diff-desc {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+  .btn-start-game {
+    font-size: 1.1rem;
+    padding: 1rem 2rem;
+    width: 100%;
+    max-width: 320px;
+    border-radius: 14px;
+    box-shadow: 0 12px 28px -6px var(--primary-glow);
+  }
+
+  /* ACTIVE PLAY ARENA */
+  .play-arena {
+    display: none;
+    flex-direction: column;
+  }
+  .arena-header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+  }
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+  }
+  .stat-tile {
+    background: var(--surface);
+    border: 1px solid var(--card-border);
+    border-radius: 14px;
+    padding: 0.85rem 0.75rem;
+    text-align: center;
+  }
+  .stat-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.25rem;
+  }
+  .stat-val {
+    font-size: 1.35rem;
+    font-weight: 800;
+    font-family: 'JetBrains Mono', monospace;
+    color: #fff;
+  }
+  .range-box {
+    background: var(--surface);
+    border: 1px solid var(--card-border);
+    border-radius: 14px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+  .range-label-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 0.65rem;
+  }
+  .range-track {
+    position: relative;
+    height: 10px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .range-fill {
+    position: absolute;
+    height: 100%;
+    left: 0%;
+    width: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--primary));
+    border-radius: 999px;
+    transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 0 12px var(--accent-glow);
+  }
+  .input-form-row {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+  .input-form-row input {
+    flex: 1;
+    font-size: 1.15rem;
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+    padding: 0.9rem 1.25rem;
+    text-align: center;
+  }
+  .input-form-row button {
+    width: auto;
+    padding: 0.9rem 1.75rem;
+    font-size: 1rem;
+  }
+  .feedback-box {
+    padding: 1rem 1.25rem;
+    border-radius: 14px;
+    font-weight: 700;
+    text-align: center;
+    display: none;
+    line-height: 1.5;
+    animation: popIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes popIn {
+    0% { transform: scale(0.96); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .feedback-box.low {
+    display: block;
+    background: rgba(6, 182, 212, 0.12);
+    border: 1px solid rgba(6, 182, 212, 0.3);
+    color: #38bdf8;
+  }
+  .feedback-box.high {
+    display: block;
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    color: #fbbf24;
+  }
+  .feedback-box.win {
+    display: block;
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid rgba(16, 185, 129, 0.35);
+    color: #34d399;
+  }
+  .feedback-box.lost, .feedback-box.error {
+    display: block;
+    background: rgba(244, 63, 94, 0.15);
+    border: 1px solid rgba(244, 63, 94, 0.35);
+    color: #fb7185;
+  }
+  .temp-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.85rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    margin-top: 0.5rem;
+    border: 1px solid transparent;
+  }
+  .temp-pill.boiling { background: rgba(244, 63, 94, 0.2); border-color: rgba(244, 63, 94, 0.4); color: #fda4af; }
+  .temp-pill.warm { background: rgba(245, 158, 11, 0.2); border-color: rgba(245, 158, 11, 0.4); color: #fde68a; }
+  .temp-pill.lukewarm { background: rgba(6, 182, 212, 0.2); border-color: rgba(6, 182, 212, 0.4); color: #a5f3fc; }
+  .temp-pill.cold { background: rgba(148, 163, 184, 0.2); border-color: rgba(148, 163, 184, 0.4); color: #e2e8f0; }
+
+  .post-game-actions {
+    display: none;
+    gap: 0.75rem;
+    margin-top: 1.25rem;
+  }
+  .btn-play-again {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    box-shadow: 0 8px 20px -6px rgba(16, 185, 129, 0.4);
+  }
+  .btn-play-again:hover {
+    box-shadow: 0 12px 24px -6px rgba(16, 185, 129, 0.5);
+  }
+  .btn-back-lobby {
+    background: var(--surface);
+    border: 1px solid var(--card-border);
+    color: var(--text);
+    box-shadow: none;
+  }
+
+  /* SIDEBAR STYLES */
+  .sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--card-border);
+  }
+  .sidebar-title {
+    font-size: 1rem;
+    font-weight: 700;
+  }
+  .tab-group {
+    display: flex;
+    background: var(--surface);
+    padding: 0.25rem;
+    border-radius: 12px;
+    border: 1px solid var(--card-border);
+    margin-bottom: 1.25rem;
+  }
+  .tab-item {
+    flex: 1;
+    padding: 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    border-radius: 9px;
+    cursor: pointer;
+    box-shadow: none;
+    transition: all 0.2s;
+  }
+  .tab-item.active {
+    background: var(--primary);
+    color: #fff;
+    box-shadow: 0 4px 12px -2px var(--primary-glow);
+  }
+  .log-list, .lead-list {
+    list-style: none;
+    overflow-y: auto;
+    max-height: 420px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding-right: 0.25rem;
+  }
+  .log-list::-webkit-scrollbar, .lead-list::-webkit-scrollbar { width: 5px; }
+  .log-list::-webkit-scrollbar-thumb, .lead-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+  }
+  .log-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--card-border);
+    padding: 0.65rem 0.85rem;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    animation: fadeIn 0.2s ease-out;
+  }
+  .lead-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--card-border);
+    padding: 0.65rem 0.85rem;
+    border-radius: 12px;
+    font-size: 0.85rem;
+  }
+  .rank-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    background: rgba(245, 158, 11, 0.2);
+    color: #fbbf24;
+    font-weight: 800;
+    font-size: 0.75rem;
+    margin-right: 0.5rem;
+  }
+  @media (max-width: 860px) {
+    .app-layout { flex-direction: column; }
+    .log-sidebar { min-width: 100%; }
+    .diff-grid { grid-template-columns: 1fr; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="app-layout">
+  <!-- MAIN GAME CARD -->
+  <div class="card game-card">
+    <div class="header-bar">
+      <div class="user-badge">
+        <div class="user-avatar">{{ request.user.username|make_list|first|upper }}</div>
+        <div>
+          <span style="display:block; font-size:0.75rem; color:var(--text-muted); line-height:1;">O'yinchi</span>
+          <strong style="color:var(--text); font-size:0.95rem;">{{ request.user.username }}</strong>
+        </div>
+      </div>
+      <a href="{% url 'logout' %}" class="btn btn-logout">Chiqish</a>
+    </div>
+
+    <!-- 1. LOBBY STATE (START SCREEN) -->
+    <div id="lobbyScreen" class="lobby-container">
+      <div class="lobby-icon">🎯</div>
+      <h2>Sonni Toping</h2>
+      <p class="subtitle" style="margin-bottom:1.5rem;">Qiyinlik darajasini tanlang va o'yinni boshlang</p>
+
+      <div class="diff-selector-title">Qiyinlik darajasi</div>
+      <div class="diff-grid">
+        <div class="diff-card" data-diff="easy">
+          <div class="diff-name">Oson</div>
+          <div class="diff-desc">1 — 50 oralig'ida<br>Cheksiz urinish</div>
+        </div>
+        <div class="diff-card active" data-diff="medium">
+          <div class="diff-name">O'rtacha</div>
+          <div class="diff-desc">1 — 100 oralig'ida<br>Klassik rejim</div>
+        </div>
+        <div class="diff-card" data-diff="hard">
+          <div class="diff-name">Qiyin 🔥</div>
+          <div class="diff-desc">1 — 200 oralig'ida<br>Maks. 7 imkoniyat</div>
+        </div>
+      </div>
+
+      <button id="startGameBtn" class="btn btn-start-game">
+        <span>O'yinni boshlash</span>
+        <span>➔</span>
+      </button>
+    </div>
+
+    <!-- 2. ACTIVE PLAY ARENA -->
+    <div id="playArena" class="play-arena">
+      <div class="arena-header">
+        <h2 id="arenaTitle">1 dan 100 gacha</h2>
+        <p class="subtitle" id="arenaSubtitle" style="margin-bottom:0.75rem;">Yashirin sonni toping</p>
+      </div>
+
+      <!-- Live statistics -->
+      <div class="stats-grid">
+        <div class="stat-tile">
+          <div class="stat-label">Urinishlar</div>
+          <div class="stat-val" id="attemptCount">0</div>
+        </div>
+        <div class="stat-tile">
+          <div class="stat-label">Vaqt</div>
+          <div class="stat-val" id="timerCount" style="color:var(--accent);">00:00</div>
+        </div>
+        <div class="stat-tile">
+          <div class="stat-label">Rekord</div>
+          <div class="stat-val" style="color:#fbbf24;" id="bestScoreVal">{{ user_best.best_attempts|default:"-" }} ta</div>
+        </div>
+      </div>
+
+      <!-- Dynamic narrowing range -->
+      <div class="range-box">
+        <div class="range-label-row">
+          <span>Qolgan oraliq:</span>
+          <strong id="rangeLabel" style="font-family:'JetBrains Mono', monospace; color:#fff;">[1 ... 100]</strong>
+        </div>
+        <div class="range-track">
+          <div class="range-fill" id="rangeFill"></div>
+        </div>
+      </div>
+
+      <!-- Guess input -->
+      <form id="guessForm">
+        <div class="input-form-row">
+          <input
+            type="number"
+            id="guessInput"
+            placeholder="Son kiriting..."
+            required
+            autocomplete="off"
+          >
+          <button type="submit" id="submitGuessBtn">Taxmin qilish</button>
+        </div>
+      </form>
+
+      <div id="feedback" class="feedback-box"></div>
+
+      <!-- Action buttons after win/loss -->
+      <div id="postGameActions" class="post-game-actions">
+        <button id="playAgainBtn" class="btn btn-play-again" style="flex:1;">Qayta o'ynash</button>
+        <button id="backToLobbyBtn" class="btn btn-back-lobby" style="width:auto; padding:0 1.25rem;">Sozlamalar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT SIDENAV (LOGS & LEADERBOARD) -->
+  <aside class="log-sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-title">Ma'lumotlar</div>
+      <span style="font-size:0.8rem; color:var(--text-muted); font-family:'JetBrains Mono', monospace;" id="sidebarBadge">0 ta</span>
+    </div>
+
+    <div class="tab-group">
+      <button class="tab-item active" id="tabHistoryBtn">Taxminlar tarixi</button>
+      <button class="tab-item" id="tabLeaderboardBtn">Yetakchilar</button>
+    </div>
+
+    <!-- History Tab -->
+    <div id="tabHistoryContent">
+      <ul class="log-list" id="guessLogList">
+        <li style="color:var(--text-muted); text-align:center; padding:3rem 0; font-size:0.85rem;" id="emptyLogMsg">
+          Hozircha urinishlar yo'q
+        </li>
+      </ul>
+    </div>
+
+    <!-- Leaderboard Tab -->
+    <div id="tabLeaderboardContent" style="display:none;">
+      <ul class="lead-list" id="leaderboardList">
+        {% for top in top_games %}
+        <li class="lead-row">
+          <div>
+            <span class="rank-badge">{{ forloop.counter }}</span>
+            <strong style="color:#fff;">{{ top.user.username }}</strong>
+            <span style="font-size:0.75rem; color:var(--text-muted); margin-left:0.25rem;">({{ top.difficulty }})</span>
+          </div>
+          <div style="text-align:right;">
+            <span style="color:var(--accent); font-weight:700; font-family:'JetBrains Mono', monospace;">{{ top.score }} ball</span>
+            <div style="font-size:0.72rem; color:var(--text-muted);">{{ top.attempts }} ur. • {{ top.duration_seconds }}s</div>
+          </div>
+        </li>
+        {% empty %}
+        <li style="color:var(--text-muted); text-align:center; padding:3rem 0; font-size:0.85rem;">Hozircha g'oliblar yo'q</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </aside>
+</div>
+
+<script>
+  let selectedDifficulty = "medium";
+  let maxRange = 100;
+  let maxAttempts = null;
+  let minPossible = 1;
+  let maxPossible = 100;
+  let secondsElapsed = 0;
+  let timerInterval = null;
+  let guessHistory = [];
+
+  // Synth Audio Effects
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  function playSound(type) {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const now = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    if (type === 'high') {
+      osc.frequency.setValueAtTime(520, now);
+      osc.frequency.exponentialRampToValueAtTime(340, now + 0.15);
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.linearRampToValueAtTime(0.01, now + 0.15);
+      osc.start(now); osc.stop(now + 0.15);
+    } else if (type === 'low') {
+      osc.frequency.setValueAtTime(260, now);
+      osc.frequency.exponentialRampToValueAtTime(420, now + 0.15);
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.linearRampToValueAtTime(0.01, now + 0.15);
+      osc.start(now); osc.stop(now + 0.15);
+    } else if (type === 'win') {
+      [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
+        const o = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        o.connect(g); g.connect(audioCtx.destination);
+        o.frequency.setValueAtTime(freq, now + (i * 0.09));
+        g.gain.setValueAtTime(0.25, now + (i * 0.09));
+        g.gain.linearRampToValueAtTime(0.01, now + (i * 0.09) + 0.18);
+        o.start(now + (i * 0.09)); o.stop(now + (i * 0.09) + 0.18);
+      });
+    } else if (type === 'lost') {
+      osc.frequency.setValueAtTime(220, now);
+      osc.frequency.linearRampToValueAtTime(110, now + 0.35);
+      gain.gain.setValueAtTime(0.25, now);
+      gain.gain.linearRampToValueAtTime(0.01, now + 0.35);
+      osc.start(now); osc.stop(now + 0.35);
+    }
+  }
+
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
+  function startTimer() {
+    clearInterval(timerInterval);
+    secondsElapsed = 0;
+    document.getElementById('timerCount').textContent = '00:00';
+    timerInterval = setInterval(() => {
+      secondsElapsed++;
+      const m = String(Math.floor(secondsElapsed / 60)).padStart(2, '0');
+      const s = String(secondsElapsed % 60).padStart(2, '0');
+      document.getElementById('timerCount').textContent = `${m}:${s}`;
+    }, 1000);
+  }
+
+  function stopTimer() {
+    clearInterval(timerInterval);
+  }
+
+  function updateRangeBar() {
+    document.getElementById('rangeLabel').textContent = `[${minPossible} ... ${maxPossible}]`;
+    const fill = document.getElementById('rangeFill');
+    const leftPercent = ((minPossible - 1) / maxRange) * 100;
+    const widthPercent = Math.max(3, ((maxPossible - minPossible + 1) / maxRange) * 100);
+    fill.style.left = leftPercent + '%';
+    fill.style.width = widthPercent + '%';
+  }
+
+  // DOM Elements
+  const lobbyScreen = document.getElementById('lobbyScreen');
+  const playArena = document.getElementById('playArena');
+  const startGameBtn = document.getElementById('startGameBtn');
+  const guessForm = document.getElementById('guessForm');
+  const guessInput = document.getElementById('guessInput');
+  const submitGuessBtn = document.getElementById('submitGuessBtn');
+  const attemptCount = document.getElementById('attemptCount');
+  const feedback = document.getElementById('feedback');
+  const postGameActions = document.getElementById('postGameActions');
+  const playAgainBtn = document.getElementById('playAgainBtn');
+  const backToLobbyBtn = document.getElementById('backToLobbyBtn');
+  const guessLogList = document.getElementById('guessLogList');
+  const sidebarBadge = document.getElementById('sidebarBadge');
+
+  // Difficulty selection
+  document.querySelectorAll('.diff-card').forEach(card => {
+    card.addEventListener('click', function() {
+      document.querySelectorAll('.diff-card').forEach(c => c.classList.remove('active'));
+      this.classList.add('active');
+      selectedDifficulty = this.getAttribute('data-diff');
+    });
+  });
+
+  // START GAME (Triggers only when user intends to play)
+  async function launchGame(diff) {
+    startGameBtn.disabled = true;
+    try {
+      const res = await fetch("{% url 'api_reset' %}", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken'),
+        },
+        body: JSON.stringify({ difficulty: diff })
+      });
+      const data = await res.json();
+      if (res.ok && data.status === 'reset') {
+        maxRange = data.max_range;
+        maxAttempts = data.max_attempts;
+        minPossible = 1;
+        maxPossible = maxRange;
+        guessHistory = [];
+
+        // Update Arena UI
+        document.getElementById('arenaTitle').textContent = `1 dan ${maxRange} oralig'ida`;
+        document.getElementById('arenaSubtitle').textContent = maxAttempts 
+          ? `Sizda jami ${maxAttempts} ta imkoniyat bor` 
+          : "Yashirin sonni imkon qadar kam urinishda toping";
+
+        attemptCount.textContent = maxAttempts ? `0/${maxAttempts}` : '0';
+        guessInput.min = 1;
+        guessInput.max = maxRange;
+        guessInput.placeholder = `1 - ${maxRange} oralig'ida`;
+        guessInput.disabled = false;
+        guessInput.value = '';
+        submitGuessBtn.style.display = 'block';
+        postGameActions.style.display = 'none';
+        feedback.style.display = 'none';
+
+        updateRangeBar();
+        updateSidebar();
+
+        // Switch Screen
+        lobbyScreen.style.display = 'none';
+        playArena.style.display = 'flex';
+        startTimer();
+        guessInput.focus();
+      }
+    } catch (e) {
+      alert("O'yinni boshlashda tarmoq xatosi yuz berdi.");
+    } finally {
+      startGameBtn.disabled = false;
+    }
+  }
+
+  startGameBtn.addEventListener('click', () => launchGame(selectedDifficulty));
+  playAgainBtn.addEventListener('click', () => launchGame(selectedDifficulty));
+  backToLobbyBtn.addEventListener('click', () => {
+    stopTimer();
+    playArena.style.display = 'none';
+    lobbyScreen.style.display = 'flex';
+  });
+
+  function updateSidebar() {
+    sidebarBadge.textContent = guessHistory.length + ' ta';
+    if (guessHistory.length === 0) {
+      guessLogList.innerHTML = '<li style="color:var(--text-muted); text-align:center; padding:3rem 0; font-size:0.85rem;" id="emptyLogMsg">Hozircha urinishlar yo\'q</li>';
+      return;
+    }
+    guessLogList.innerHTML = '';
+    [...guessHistory].reverse().forEach(item => {
+      const li = document.createElement('li');
+      li.className = 'log-row';
+      li.innerHTML = `
+        <span>#${item.attempt}: <strong style="color:#fff; font-family:'JetBrains Mono', monospace;">${item.value}</strong></span>
+        <span style="font-size:0.75rem;">${item.tempLabel} • ${item.message}</span>
+      `;
+      guessLogList.appendChild(li);
+    });
+  }
+
+  function showFeedback(text, type, tempPillHtml = '') {
+    feedback.innerHTML = `<div>${text}</div>` + (tempPillHtml ? `<div>${tempPillHtml}</div>` : '');
+    feedback.className = 'feedback-box ' + type;
+  }
+
+  guessForm.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const val = parseInt(guessInput.value, 10);
+    if (isNaN(val) || val < 1 || val > maxRange) {
+      showFeedback(`Iltimos, 1 dan ${maxRange} gacha butun son kiriting.`, 'error');
+      return;
+    }
+
+    submitGuessBtn.disabled = true;
+    try {
+      const res = await fetch("{% url 'api_guess' %}", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken'),
+        },
+        body: JSON.stringify({ guess: val, duration_seconds: secondsElapsed })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showFeedback(data.error || 'Xatolik yuz berdi.', 'error');
+      } else {
+        const attemptDisplay = maxAttempts ? `${data.attempts}/${maxAttempts}` : `${data.attempts}`;
+        attemptCount.textContent = attemptDisplay;
+
+        const pillHtml = `<span class="temp-pill ${data.temp}">${data.temp_label}</span>`;
+        showFeedback(data.message, data.status, pillHtml);
+
+        playSound(data.status);
+
+        if (data.status === 'win') {
+          stopTimer();
+          if (typeof confetti === 'function') {
+            confetti({
+              particleCount: 140,
+              spread: 80,
+              origin: { y: 0.6 },
+              colors: ['#6366f1', '#06b6d4', '#10b981', '#f59e0b']
+            });
+          }
+          guessInput.disabled = true;
+          submitGuessBtn.style.display = 'none';
+          postGameActions.style.display = 'flex';
+          loadLeaderboard();
+        } else if (data.status === 'lost') {
+          stopTimer();
+          guessInput.disabled = true;
+          submitGuessBtn.style.display = 'none';
+          postGameActions.style.display = 'flex';
+        } else {
+          if (data.status === 'low' && val >= minPossible) minPossible = val + 1;
+          if (data.status === 'high' && val <= maxPossible) maxPossible = val - 1;
+          updateRangeBar();
+          guessInput.value = '';
+          guessInput.focus();
+        }
+
+        guessHistory.push({
+          attempt: data.attempts,
+          value: val,
+          status: data.status,
+          message: data.message,
+          tempLabel: data.temp_label
+        });
+        updateSidebar();
+      }
+    } catch (err) {
+      showFeedback('Tarmoq xatosi. Qaytadan urinib ko\'ring.', 'error');
+    } finally {
+      submitGuessBtn.disabled = false;
+    }
+  });
+
+  // Tab switching
+  const tabHistoryBtn = document.getElementById('tabHistoryBtn');
+  const tabLeaderboardBtn = document.getElementById('tabLeaderboardBtn');
+  const tabHistoryContent = document.getElementById('tabHistoryContent');
+  const tabLeaderboardContent = document.getElementById('tabLeaderboardContent');
+
+  tabHistoryBtn.addEventListener('click', () => {
+    tabHistoryBtn.classList.add('active');
+    tabLeaderboardBtn.classList.remove('active');
+    tabHistoryContent.style.display = 'block';
+    tabLeaderboardContent.style.display = 'none';
+  });
+
+  tabLeaderboardBtn.addEventListener('click', () => {
+    tabLeaderboardBtn.classList.add('active');
+    tabHistoryBtn.classList.remove('active');
+    tabHistoryContent.style.display = 'none';
+    tabLeaderboardContent.style.display = 'block';
+    loadLeaderboard();
+  });
+
+  async function loadLeaderboard() {
+    try {
+      const res = await fetch("{% url 'api_leaderboard' %}");
+      const data = await res.json();
+      if (res.ok && data.leaderboard) {
+        const list = document.getElementById('leaderboardList');
+        if (data.leaderboard.length === 0) {
+          list.innerHTML = '<li style="color:var(--text-muted); text-align:center; padding:3rem 0; font-size:0.85rem;">Hozircha g\'oliblar yo\'q</li>';
+          return;
+        }
+        list.innerHTML = data.leaderboard.map((item, idx) => `
+          <li class="lead-row">
+            <div>
+              <span class="rank-badge">${idx + 1}</span>
+              <strong style="color:#fff;">${item.username}</strong>
+              <span style="font-size:0.75rem; color:var(--text-muted); margin-left:0.25rem;">(${item.difficulty})</span>
+            </div>
+            <div style="text-align:right;">
+              <span style="color:var(--accent); font-weight:700; font-family:'JetBrains Mono', monospace;">${item.score} ball</span>
+              <div style="font-size:0.72rem; color:var(--text-muted);">${item.attempts} ur. • ${item.duration}s</div>
+            </div>
+          </li>
+        `).join('');
+      }
+    } catch (e) {}
+  }
+</script>
+{% endblock %}
